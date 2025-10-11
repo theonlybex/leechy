@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
@@ -15,6 +15,7 @@ export default function NewListingPage() {
     handleSubmit,
     formState: { errors },
     reset,
+    setValue,
   } = useForm<ListingCreateInput>({
     resolver: zodResolver(listingCreateSchema),
     defaultValues: {
@@ -26,6 +27,71 @@ export default function NewListingPage() {
       location: '',
     },
   })
+
+  // Listen for AI assistant form fill event
+  useEffect(() => {
+    const handleFillForm = async (event: CustomEvent) => {
+      const { data, animated } = event.detail
+      
+      if (!animated) {
+        // Fill instantly (fallback)
+        if (data.title) setValue('title', data.title)
+        if (data.category) setValue('category', data.category)
+        if (data.pricePerDayUsd) setValue('pricePerDayUsd', data.pricePerDayUsd)
+        if (data.imageUrl) setValue('imageUrl', data.imageUrl)
+        if (data.ownerName) setValue('ownerName', data.ownerName)
+        if (data.location) setValue('location', data.location)
+        return
+      }
+
+      // Animated typing effect
+      const typeText = async (fieldName: keyof typeof data, text: string, delay = 30) => {
+        let currentText = ''
+        for (let i = 0; i < text.length; i++) {
+          currentText += text[i]
+          setValue(fieldName as any, currentText)
+          await new Promise(resolve => setTimeout(resolve, delay))
+        }
+      }
+
+      // Fill fields one by one with typing animation
+      if (data.title) {
+        await typeText('title', data.title, 40)
+        await new Promise(resolve => setTimeout(resolve, 300))
+      }
+      
+      if (data.category) {
+        setValue('category', data.category)
+        await new Promise(resolve => setTimeout(resolve, 500))
+      }
+      
+      if (data.pricePerDayUsd) {
+        const priceText = data.pricePerDayUsd.toString()
+        await typeText('pricePerDayUsd' as any, priceText, 50)
+        setValue('pricePerDayUsd', data.pricePerDayUsd)
+        await new Promise(resolve => setTimeout(resolve, 300))
+      }
+      
+      if (data.imageUrl) {
+        await typeText('imageUrl', data.imageUrl, 20)
+        await new Promise(resolve => setTimeout(resolve, 300))
+      }
+      
+      if (data.ownerName) {
+        await typeText('ownerName', data.ownerName, 50)
+        await new Promise(resolve => setTimeout(resolve, 300))
+      }
+      
+      if (data.location) {
+        await typeText('location', data.location, 50)
+      }
+    }
+
+    window.addEventListener('fillListingForm', handleFillForm as EventListener)
+    return () => {
+      window.removeEventListener('fillListingForm', handleFillForm as EventListener)
+    }
+  }, [setValue])
 
   const onSubmit = async (values: ListingCreateInput) => {
     setSubmitting(true)
